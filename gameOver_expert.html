@@ -17,6 +17,7 @@
       --error-color: #d32f2f;
       --analysis-bg: #e3f2fd;
       --shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      --loading-bg: rgba(255, 255, 255, 0.95);
     }
 
     [data-theme="dark"] {
@@ -32,6 +33,7 @@
       --error-color: #ef5350;
       --analysis-bg: #37474f;
       --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      --loading-bg: rgba(0, 0, 0, 0.8);
     }
 
     body {
@@ -145,10 +147,49 @@
       font-size: 14px;
     }
 
+    /* Loading Overlay */
+    #loading {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--loading-bg);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      color: var(--text-color);
+      transition: opacity 0.4s ease;
+    }
+
+    #loading.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .spinner {
+      border: 6px solid #f3f3f3;
+      border-top: 6px solid var(--accent-color);
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+
+    #loading p {
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
     @media (max-width: 600px) {
-      table, .analysis-box {
-        width: 95%;
-      }
+      table, .analysis-box { width: 95%; }
       th, td { font-size: 14px; padding: 8px; }
       .analysis-box h2 { font-size: 1.2rem; }
       .analysis-box p { font-size: 0.9rem; }
@@ -157,6 +198,12 @@
   </style>
 </head>
 <body>
+  <!-- Loading Overlay -->
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Analyzing performance... Please wait</p>
+  </div>
+
   <button id="themeToggle">Toggle Dark Mode</button>
   <h1>Game Over</h1>
   <h2>Your Run Has Ended</h2>
@@ -216,6 +263,11 @@
 
       const logSummary = JSON.stringify(activityLog.slice(-100));
 
+      // Show loading overlay
+      const loading = document.getElementById("loading");
+      loading.style.display = "flex";
+      loading.classList.remove("fade-out");
+
       try {
         const res = await fetch("/analyzePerformance", {
           method: "POST",
@@ -225,16 +277,18 @@
 
         if (!res.ok) {
           document.getElementById("analysis-text").textContent = "Failed to analyze performance.";
-          document.getElementById("analysis-box").classList.add("visible");
-          return;
+        } else {
+          const data = await res.json();
+          document.getElementById("analysis-text").textContent = data.analysis;
         }
-
-        const data = await res.json();
-        document.getElementById("analysis-text").textContent = data.analysis;
-        document.getElementById("analysis-box").classList.add("visible");
       } catch (err) {
         console.error(err);
         document.getElementById("analysis-text").textContent = "Error analyzing performance.";
+      } finally {
+        // Hide loading smoothly
+        loading.classList.add("fade-out");
+        setTimeout(() => { loading.style.display = "none"; }, 400);
+
         document.getElementById("analysis-box").classList.add("visible");
       }
     }
